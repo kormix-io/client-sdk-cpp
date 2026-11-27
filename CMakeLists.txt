@@ -567,8 +567,10 @@ if(LIVEKIT_IS_TOPLEVEL)
 endif()
 
 if(APPLE)
-  if(NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET OR CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS "12.3")
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "12.3" CACHE STRING "Minimum macOS version" FORCE)
+  if(NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET OR CMAKE_OSX_DEPLOYMENT_TARGET STREQUAL "")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "12.3" CACHE STRING "Minimum macOS version")
+  elseif(CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS "10.15")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum macOS version" FORCE)
   endif()
 
   find_library(FW_COREAUDIO      CoreAudio      REQUIRED)
@@ -587,7 +589,6 @@ if(APPLE)
   find_library(FW_IOSURFACE      IOSurface      REQUIRED)
   find_library(FW_METAL          Metal          REQUIRED)
   find_library(FW_METALKIT       MetalKit       REQUIRED)
-  find_library(FW_SCREENCAPTUREKIT ScreenCaptureKit REQUIRED)
 
   target_link_libraries(livekit PRIVATE
     ${FW_COREAUDIO}
@@ -606,8 +607,18 @@ if(APPLE)
     ${FW_IOSURFACE}
     ${FW_METAL}
     ${FW_METALKIT}
-    ${FW_SCREENCAPTUREKIT}
   )
+
+  if(CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS "12.3")
+    target_link_options(livekit PRIVATE "LINKER:-weak_framework,ScreenCaptureKit")
+  else()
+    find_library(FW_SCREENCAPTUREKIT ScreenCaptureKit REQUIRED)
+    target_link_libraries(livekit PRIVATE ${FW_SCREENCAPTUREKIT})
+  endif()
+
+  if(CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS "11.0")
+    target_link_options(livekit PRIVATE "LINKER:-ld_classic")
+  endif()
 
   target_link_options(livekit PRIVATE "LINKER:-ObjC")
 endif()
